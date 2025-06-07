@@ -596,14 +596,14 @@ class BasicQuiz:
             self.create_main_menu()
 
     def draw_name_selection(self, frame, w, h):
-        # Header
-        cv2.rectangle(frame, (0, 0), (w, 100), (30, 30, 46), -1)
+        # Header with dark blue background
+        cv2.rectangle(frame, (0, 0), (w, 100), (139, 69, 19), -1)  # Dark blue background
         cv2.putText(frame, "Step 1/3: Select Your Name", (20, 30), 
-                   cv2.FONT_HERSHEY_SIMPLEX, 1.2, (137, 180, 250), 3)
+                   cv2.FONT_HERSHEY_SIMPLEX, 1.2, (255, 255, 255), 3)  # White bold text
         cv2.putText(frame, "Point to your name and hold for 3 seconds", (20, 65), 
-                   cv2.FONT_HERSHEY_SIMPLEX, 0.8, (205, 214, 244), 2)
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)  # White bold text
         
-        # Center student name boxes
+        # Center student name boxes - moved down
         self.selection_boxes = []
         box_width = 350
         box_height = 80
@@ -611,10 +611,10 @@ class BasicQuiz:
         row_spacing = 100
         col_spacing = 50
         
-        # Calculate starting position to center all boxes
+        # Calculate starting position to center all boxes (moved down)
         total_width = (box_width * names_per_row) + (col_spacing * (names_per_row - 1))
         start_x = (w - total_width) // 2
-        start_y = 150
+        start_y = 200  # Moved down from 150
         
         for i, name in enumerate(self.students):
             row = i // names_per_row
@@ -629,34 +629,34 @@ class BasicQuiz:
             box = [x, y, x + box_width, y + box_height]
             
             # Highlight if hovering
-            color = (137, 180, 250) if self.hover_option == name else (49, 50, 68)
+            color = (137, 180, 250) if self.hover_option == name else (139, 69, 19)  # Changed to dark blue
             thickness = 6 if self.hover_option == name else 3
             
             cv2.rectangle(frame, (box[0], box[1]), (box[2], box[3]), color, thickness)
-            cv2.rectangle(frame, (box[0]+3, box[1]+3), (box[2]-3, box[3]-3), (30, 30, 46), -1)
+            cv2.rectangle(frame, (box[0]+3, box[1]+3), (box[2]-3, box[3]-3), (139, 69, 19), -1)  # Dark blue background
             
-            # Center name text
-            text_size = cv2.getTextSize(name, cv2.FONT_HERSHEY_SIMPLEX, 1.0, 2)[0]
+            # Center name text - white bold
+            text_size = cv2.getTextSize(name, cv2.FONT_HERSHEY_SIMPLEX, 1.0, 3)[0]
             text_x = box[0] + (box_width - text_size[0]) // 2
             text_y = box[1] + (box_height + text_size[1]) // 2
             cv2.putText(frame, name, (text_x, text_y), 
-                       cv2.FONT_HERSHEY_SIMPLEX, 1.0, (205, 214, 244), 2)
+                       cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 3)  # White bold text
             
             # Draw selection progress with red color
             if self.hover_option == name and self.selection_timer > 0:
                 progress_width = int((self.selection_timer / self.selection_threshold) * (box[2] - box[0] - 10))
                 cv2.rectangle(frame, (box[0] + 5, box[3] - 15), 
-                             (box[0] + 5 + progress_width, box[3] - 5), (0, 0, 255), -1)  # Changed to red
+                             (box[0] + 5 + progress_width, box[3] - 5), (0, 0, 255), -1)  # Red progress
             
             self.selection_boxes.append((name, box))
 
     def draw_question_type_selection(self, frame, w, h):
-        # Header
-        cv2.rectangle(frame, (0, 0), (w, 100), (30, 30, 46), -1)
+        # Header with dark blue background
+        cv2.rectangle(frame, (0, 0), (w, 100), (139, 69, 19), -1)  # Dark blue background
         cv2.putText(frame, "Step 2/3: Choose Question Type", (20, 30), 
-                   cv2.FONT_HERSHEY_SIMPLEX, 1.2, (137, 180, 250), 3)
+                   cv2.FONT_HERSHEY_SIMPLEX, 1.2, (255, 255, 255), 3)  # White bold text
         cv2.putText(frame, f"Welcome {self.selected_name}! Point to select quiz type", (20, 65), 
-                   cv2.FONT_HERSHEY_SIMPLEX, 0.8, (205, 214, 244), 2)
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)  # White bold text
         
         # Center question type boxes
         self.selection_boxes = []
@@ -664,9 +664,9 @@ class BasicQuiz:
         
         # Only show types that have questions
         if self.questions.get("multiple_choice", []):
-            available_types.append(("multiple_choice", "📝 Multiple Choice"))
+            available_types.append(("multiple_choice", "Multiple Choice"))
         if self.questions.get("true_false", []):
-            available_types.append(("true_false", "✅ True/False"))
+            available_types.append(("true_false", "True/False"))
         
         if not available_types:
             cv2.putText(frame, "No questions available!", (w//2 - 200, h//2), 
@@ -676,7 +676,7 @@ class BasicQuiz:
         box_width = 500
         box_height = 100
         spacing = 50
-        start_y = 200
+        start_y = 250  # Moved down to center better
         
         for i, (qtype, display_name) in enumerate(available_types):
             y = start_y + (i * (box_height + spacing))
@@ -684,47 +684,47 @@ class BasicQuiz:
             box = [x, y, x + box_width, y + box_height]
             
             # Highlight if hovering
-            color = (137, 180, 250) if self.hover_option == qtype else (49, 50, 68)
+            color = (137, 180, 250) if self.hover_option == qtype else (139, 69, 19)  # Changed to dark blue
             thickness = 6 if self.hover_option == qtype else 3
             
             cv2.rectangle(frame, (box[0], box[1]), (box[2], box[3]), color, thickness)
-            cv2.rectangle(frame, (box[0]+3, box[1]+3), (box[2]-3, box[3]-3), (30, 30, 46), -1)
+            cv2.rectangle(frame, (box[0]+3, box[1]+3), (box[2]-3, box[3]-3), (139, 69, 19), -1)  # Dark blue background
             
-            # Center type name text
+            # Center type name text - white bold
             text_size = cv2.getTextSize(display_name, cv2.FONT_HERSHEY_SIMPLEX, 1.2, 3)[0]
             text_x = box[0] + (box_width - text_size[0]) // 2
             text_y = box[1] + (box_height + text_size[1]) // 2
             cv2.putText(frame, display_name, (text_x, text_y), 
-                       cv2.FONT_HERSHEY_SIMPLEX, 1.2, (205, 214, 244), 3)
+                       cv2.FONT_HERSHEY_SIMPLEX, 1.2, (255, 255, 255), 3)  # White bold text
             
             # Draw selection progress with red color
             if self.hover_option == qtype and self.selection_timer > 0:
                 progress_width = int((self.selection_timer / self.selection_threshold) * (box[2] - box[0] - 10))
                 cv2.rectangle(frame, (box[0] + 5, box[3] - 20), 
-                             (box[0] + 5 + progress_width, box[3] - 5), (0, 0, 255), -1)  # Changed to red
+                             (box[0] + 5 + progress_width, box[3] - 5), (0, 0, 255), -1)  # Red progress
             
             self.selection_boxes.append((qtype, box))
 
     def draw_quiz_interface(self, frame, question, w, h):
-        # Header
-        cv2.rectangle(frame, (0, 0), (w, 100), (30, 30, 46), -1)
+        # Header with dark blue background
+        cv2.rectangle(frame, (0, 0), (w, 100), (139, 69, 19), -1)  # Dark blue background
         cv2.putText(frame, f"Question {self.current_question_idx + 1}/{len(self.current_questions)}", 
-                   (20, 30), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (137, 180, 250), 2)
+                   (20, 30), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 3)  # White bold text
         cv2.putText(frame, f"Score: {self.student_score}", 
-                   (20, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (205, 214, 244), 2)
+                   (20, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)  # White bold text
         
         # Show different instruction based on answer status
         if self.question_answered:
             cv2.putText(frame, "Answer selected! Moving to next question...", (20, 85), 
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.6, (166, 227, 161), 1)
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)  # White bold text
         else:
             cv2.putText(frame, "Point to your answer and hold for 3 seconds", (20, 85), 
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.6, (205, 214, 244), 1)
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)  # White bold text
         
-        # Center the question text
+        # Center the question text - moved down with larger font
         question_text = question.get('question', '')
-        # Break long questions into multiple lines
-        max_chars_per_line = 50
+        # Break long questions into multiple lines with shorter line length for larger text
+        max_chars_per_line = 40  # Reduced from 50 to accommodate larger text
         question_lines = []
         words = question_text.split()
         current_line = ""
@@ -739,20 +739,21 @@ class BasicQuiz:
         if current_line:
             question_lines.append(current_line)
         
-        # Draw centered question
-        question_start_y = 130
+        # Draw centered question - moved down for better centering with larger text
+        question_start_y = 180  # Moved down from 130
         for i, line in enumerate(question_lines):
-            text_size = cv2.getTextSize(line, cv2.FONT_HERSHEY_SIMPLEX, 1.2, 3)[0]
+            # Increased font size from 1.2 to 1.5 and thickness from 3 to 4
+            text_size = cv2.getTextSize(line, cv2.FONT_HERSHEY_SIMPLEX, 1.5, 4)[0]
             text_x = (w - text_size[0]) // 2
-            text_y = question_start_y + (i * 40)
+            text_y = question_start_y + (i * 50)  # Increased spacing from 40 to 50
             
-            # Background for question text
-            cv2.rectangle(frame, (text_x - 10, text_y - 30), (text_x + text_size[0] + 10, text_y + 10), (30, 30, 46), -1)
+            # Dark blue background for question text - larger background
+            cv2.rectangle(frame, (text_x - 15, text_y - 35), (text_x + text_size[0] + 15, text_y + 15), (139, 69, 19), -1)
             cv2.putText(frame, line, (text_x, text_y), 
-                       cv2.FONT_HERSHEY_SIMPLEX, 1.2, (205, 214, 244), 3)
+                       cv2.FONT_HERSHEY_SIMPLEX, 1.5, (255, 255, 255), 4)  # Larger font size and thickness
         
-        # Calculate answer area start position
-        answer_start_y = question_start_y + (len(question_lines) * 40) + 50
+        # Calculate answer area start position with adjusted spacing
+        answer_start_y = question_start_y + (len(question_lines) * 50) + 60  # Increased spacing
         
         # Draw answer options
         self.selection_boxes = []
@@ -764,7 +765,7 @@ class BasicQuiz:
                 
                 # Calculate box width based on text
                 option_text = f"{key}) {value}"
-                text_size = cv2.getTextSize(option_text, cv2.FONT_HERSHEY_SIMPLEX, 1.0, 2)[0]
+                text_size = cv2.getTextSize(option_text, cv2.FONT_HERSHEY_SIMPLEX, 1.0, 3)[0]
                 box_width = max(400, text_size[0] + 40)
                 
                 # Center the box
@@ -772,23 +773,23 @@ class BasicQuiz:
                 box = [box_x, y, box_x + box_width, y + 80]
                 
                 # Highlight if hovering
-                color = (137, 180, 250) if self.hover_option == key else (49, 50, 68)
+                color = (137, 180, 250) if self.hover_option == key else (139, 69, 19)  # Changed to dark blue
                 thickness = 6 if self.hover_option == key else 3
                 
                 cv2.rectangle(frame, (box[0], box[1]), (box[2], box[3]), color, thickness)
-                cv2.rectangle(frame, (box[0]+3, box[1]+3), (box[2]-3, box[3]-3), (30, 30, 46), -1)
+                cv2.rectangle(frame, (box[0]+3, box[1]+3), (box[2]-3, box[3]-3), (139, 69, 19), -1)  # Dark blue background
                 
-                # Center the option text within the box
+                # Center the option text within the box - white bold
                 text_x = box[0] + (box_width - text_size[0]) // 2
                 text_y = box[1] + 50
                 cv2.putText(frame, option_text, (text_x, text_y), 
-                           cv2.FONT_HERSHEY_SIMPLEX, 1.0, (205, 214, 244), 2)
+                           cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 3)  # White bold text
                 
                 # Draw selection progress with red color
                 if self.hover_option == key and self.selection_timer > 0 and not self.question_answered:
                     progress_width = int((self.selection_timer / self.selection_threshold) * (box[2] - box[0] - 10))
                     cv2.rectangle(frame, (box[0] + 5, box[3] - 15), 
-                                 (box[0] + 5 + progress_width, box[3] - 5), (0, 0, 255), -1)  # Changed to red
+                                 (box[0] + 5 + progress_width, box[3] - 5), (0, 0, 255), -1)  # Red progress
                 
                 self.selection_boxes.append((key, box))
             
@@ -802,120 +803,120 @@ class BasicQuiz:
             
             # True box
             box_t = [start_x, answer_start_y, start_x + box_width, answer_start_y + box_height]
-            color_t = (137, 180, 250) if self.hover_option == "True" else (166, 227, 161)
+            color_t = (137, 180, 250) if self.hover_option == "True" else (139, 69, 19)  # Changed to dark blue
             thickness_t = 6 if self.hover_option == "True" else 3
             
             cv2.rectangle(frame, (box_t[0], box_t[1]), (box_t[2], box_t[3]), color_t, thickness_t)
-            cv2.rectangle(frame, (box_t[0]+3, box_t[1]+3), (box_t[2]-3, box_t[3]-3), (30, 30, 46), -1)
+            cv2.rectangle(frame, (box_t[0]+3, box_t[1]+3), (box_t[2]-3, box_t[3]-3), (139, 69, 19), -1)  # Dark blue background
             
-            # Center TRUE text
+            # Center TRUE text - white bold
             true_text_size = cv2.getTextSize("TRUE", cv2.FONT_HERSHEY_SIMPLEX, 1.8, 4)[0]
             true_text_x = box_t[0] + (box_width - true_text_size[0]) // 2
             true_text_y = box_t[1] + (box_height + true_text_size[1]) // 2
             cv2.putText(frame, "TRUE", (true_text_x, true_text_y), 
-                       cv2.FONT_HERSHEY_SIMPLEX, 1.8, (166, 227, 161), 4)
+                       cv2.FONT_HERSHEY_SIMPLEX, 1.8, (255, 255, 255), 4)  # White bold text
             
             # False box
             box_f = [start_x + box_width + spacing, answer_start_y, start_x + box_width + spacing + box_width, answer_start_y + box_height]
-            color_f = (137, 180, 250) if self.hover_option == "False" else (243, 139, 168)
+            color_f = (137, 180, 250) if self.hover_option == "False" else (139, 69, 19)  # Changed to dark blue
             thickness_f = 6 if self.hover_option == "False" else 3
             
             cv2.rectangle(frame, (box_f[0], box_f[1]), (box_f[2], box_f[3]), color_f, thickness_f)
-            cv2.rectangle(frame, (box_f[0]+3, box_f[1]+3), (box_f[2]-3, box_f[3]-3), (30, 30, 46), -1)
+            cv2.rectangle(frame, (box_f[0]+3, box_f[1]+3), (box_f[2]-3, box_f[3]-3), (139, 69, 19), -1)  # Dark blue background
             
-            # Center FALSE text
+            # Center FALSE text - white bold
             false_text_size = cv2.getTextSize("FALSE", cv2.FONT_HERSHEY_SIMPLEX, 1.8, 4)[0]
             false_text_x = box_f[0] + (box_width - false_text_size[0]) // 2
             false_text_y = box_f[1] + (box_height + false_text_size[1]) // 2
             cv2.putText(frame, "FALSE", (false_text_x, false_text_y), 
-                       cv2.FONT_HERSHEY_SIMPLEX, 1.8, (243, 139, 168), 4)
+                       cv2.FONT_HERSHEY_SIMPLEX, 1.8, (255, 255, 255), 4)  # White bold text
             
             # Draw selection progress with red color
             if not self.question_answered:
                 if self.hover_option == "True" and self.selection_timer > 0:
                     progress_width = int((self.selection_timer / self.selection_threshold) * (box_t[2] - box_t[0] - 10))
                     cv2.rectangle(frame, (box_t[0] + 5, box_t[3] - 20), 
-                                 (box_t[0] + 5 + progress_width, box_t[3] - 5), (0, 0, 255), -1)  # Changed to red
+                                 (box_t[0] + 5 + progress_width, box_t[3] - 5), (0, 0, 255), -1)  # Red progress
                 elif self.hover_option == "False" and self.selection_timer > 0:
                     progress_width = int((self.selection_timer / self.selection_threshold) * (box_f[2] - box_f[0] - 10))
                     cv2.rectangle(frame, (box_f[0] + 5, box_f[3] - 20), 
-                                 (box_f[0] + 5 + progress_width, box_f[3] - 5), (0, 0, 255), -1)  # Changed to red
+                                 (box_f[0] + 5 + progress_width, box_f[3] - 5), (0, 0, 255), -1)  # Red progress
             
             self.selection_boxes = [("True", box_t), ("False", box_f)]
 
     def draw_results_interface(self, frame, w, h):
-        # Header
-        cv2.rectangle(frame, (0, 0), (w, 100), (30, 30, 46), -1)
+        # Header with dark blue background
+        cv2.rectangle(frame, (0, 0), (w, 100), (139, 69, 19), -1)  # Dark blue background
         
-        # Center "Quiz Complete!" text
-        complete_text = "🎉 Quiz Complete!"
+        # Center "Quiz Complete!" text with white bold
+        complete_text = "Quiz Complete!"
         text_size = cv2.getTextSize(complete_text, cv2.FONT_HERSHEY_SIMPLEX, 1.5, 4)[0]
         text_x = (w - text_size[0]) // 2
         cv2.putText(frame, complete_text, (text_x, 50), 
-                   cv2.FONT_HERSHEY_SIMPLEX, 1.5, (166, 227, 161), 4)
+                   cv2.FONT_HERSHEY_SIMPLEX, 1.5, (255, 255, 255), 4)  # White bold text
         
-        # Center results
+        # Center results with white bold text - moved down
         score_text = f"Final Score: {self.student_score}/{len(self.current_questions)}"
         score_size = cv2.getTextSize(score_text, cv2.FONT_HERSHEY_SIMPLEX, 1.3, 3)[0]
         score_x = (w - score_size[0]) // 2
-        cv2.putText(frame, score_text, (score_x, 150), 
-                   cv2.FONT_HERSHEY_SIMPLEX, 1.3, (137, 180, 250), 3)
+        cv2.putText(frame, score_text, (score_x, 180), 
+                   cv2.FONT_HERSHEY_SIMPLEX, 1.3, (255, 255, 255), 3)  # White bold text - moved down
         
         percentage = (self.student_score / len(self.current_questions)) * 100 if self.current_questions else 0
         perc_text = f"Percentage: {percentage:.1f}%"
         perc_size = cv2.getTextSize(perc_text, cv2.FONT_HERSHEY_SIMPLEX, 1.1, 2)[0]
         perc_x = (w - perc_size[0]) // 2
-        cv2.putText(frame, perc_text, (perc_x, 200), 
-                   cv2.FONT_HERSHEY_SIMPLEX, 1.1, (205, 214, 244), 2)
+        cv2.putText(frame, perc_text, (perc_x, 230), 
+                   cv2.FONT_HERSHEY_SIMPLEX, 1.1, (255, 255, 255), 2)  # White bold text - moved down
         
-        # Center action buttons
+        # Center action buttons - moved down
         self.selection_boxes = []
         
         box_width = 400
         box_height = 80
         spacing = 30
-        start_y = 280
+        start_y = 320  # Moved down from 280
         
         # Restart button
         restart_x = (w - box_width) // 2
         restart_box = [restart_x, start_y, restart_x + box_width, start_y + box_height]
-        color_restart = (137, 180, 250) if self.hover_option == "restart" else (49, 50, 68)
+        color_restart = (137, 180, 250) if self.hover_option == "restart" else (139, 69, 19)  # Changed to dark blue
         thickness_restart = 4 if self.hover_option == "restart" else 2
         
         cv2.rectangle(frame, (restart_box[0], restart_box[1]), (restart_box[2], restart_box[3]), color_restart, thickness_restart)
-        cv2.rectangle(frame, (restart_box[0]+2, restart_box[1]+2), (restart_box[2]-2, restart_box[3]-2), (30, 30, 46), -1)
+        cv2.rectangle(frame, (restart_box[0]+2, restart_box[1]+2), (restart_box[2]-2, restart_box[3]-2), (139, 69, 19), -1)  # Dark blue background
         
-        restart_text = "🔄 Take Another Quiz"
+        restart_text = "Take Another Quiz"
         restart_text_size = cv2.getTextSize(restart_text, cv2.FONT_HERSHEY_SIMPLEX, 0.9, 2)[0]
         restart_text_x = restart_box[0] + (box_width - restart_text_size[0]) // 2
         cv2.putText(frame, restart_text, (restart_text_x, restart_box[1] + 50), 
-                   cv2.FONT_HERSHEY_SIMPLEX, 0.9, (205, 214, 244), 2)
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 255, 255), 2)  # White bold text
         
         # Home button
         home_y = start_y + box_height + spacing
         home_x = (w - box_width) // 2
         home_box = [home_x, home_y, home_x + box_width, home_y + box_height]
-        color_home = (137, 180, 250) if self.hover_option == "home" else (49, 50, 68)
+        color_home = (137, 180, 250) if self.hover_option == "home" else (139, 69, 19)  # Changed to dark blue
         thickness_home = 4 if self.hover_option == "home" else 2
         
         cv2.rectangle(frame, (home_box[0], home_box[1]), (home_box[2], home_box[3]), color_home, thickness_home)
-        cv2.rectangle(frame, (home_box[0]+2, home_box[1]+2), (home_box[2]-2, home_box[3]-2), (30, 30, 46), -1)
+        cv2.rectangle(frame, (home_box[0]+2, home_box[1]+2), (home_box[2]-2, home_box[3]-2), (139, 69, 19), -1)  # Dark blue background
         
-        home_text = "🏠 Back to Home"
+        home_text = "Back to Home"
         home_text_size = cv2.getTextSize(home_text, cv2.FONT_HERSHEY_SIMPLEX, 0.9, 2)[0]
         home_text_x = home_box[0] + (box_width - home_text_size[0]) // 2
         cv2.putText(frame, home_text, (home_text_x, home_box[1] + 50), 
-                   cv2.FONT_HERSHEY_SIMPLEX, 0.9, (205, 214, 244), 2)
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 255, 255), 2)  # White bold text
         
         # Draw selection progress with red color
         if self.hover_option == "restart" and self.selection_timer > 0:
             progress_width = int((self.selection_timer / self.selection_threshold) * (restart_box[2] - restart_box[0] - 10))
             cv2.rectangle(frame, (restart_box[0] + 5, restart_box[3] - 15), 
-                         (restart_box[0] + 5 + progress_width, restart_box[3] - 5), (0, 0, 255), -1)  # Changed to red
+                         (restart_box[0] + 5 + progress_width, restart_box[3] - 5), (0, 0, 255), -1)  # Red progress
         elif self.hover_option == "home" and self.selection_timer > 0:
             progress_width = int((self.selection_timer / self.selection_threshold) * (home_box[2] - home_box[0] - 10))
             cv2.rectangle(frame, (home_box[0] + 5, home_box[3] - 15), 
-                         (home_box[0] + 5 + progress_width, home_box[3] - 5), (0, 0, 255), -1)  # Changed to red
+                         (home_box[0] + 5 + progress_width, home_box[3] - 5), (0, 0, 255), -1)  # Red progress
         
         self.selection_boxes = [("restart", restart_box), ("home", home_box)]
 
@@ -1103,9 +1104,10 @@ class BasicQuiz:
             else:
                 self.score_text.insert(tk.END, f"\n📈 Total Entries: {score_count}")
                 
-            except Exception as e:
-                messagebox.showerror("Error", f"Could not load scores: {str(e)}")
-    
-    if __name__ == "__main__":
-        app = BasicQuiz()
-        app.root.mainloop()
+        except Exception as e:
+            messagebox.showerror("Error", f"Could not load scores: {str(e)}")
+
+# Move this outside the class - at module level (no indentation)
+if __name__ == "__main__":
+    app = BasicQuiz()
+    app.root.mainloop()
