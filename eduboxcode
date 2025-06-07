@@ -566,6 +566,21 @@ class BasicQuiz:
         # Load questions initially
         self.refresh_questions_view()
 
+    def delete_question(self, qtype, index):
+        """Delete a specific question by type and index."""
+        try:
+            question_list = self.questions.get(qtype, [])
+            if index < len(question_list):
+                question_list.pop(index)
+                self.questions[qtype] = question_list
+                self.save_questions()
+                self.refresh_questions_view()
+                messagebox.showinfo("Success", "Question deleted successfully!")
+            else:
+                messagebox.showerror("Error", "Invalid question index!")
+        except Exception as e:
+            messagebox.showerror("Error", f"Could not delete question: {str(e)}")
+
     def refresh_questions_view(self):
         """Refresh the questions display based on selected filter"""
         self.questions_text.config(state=tk.NORMAL)
@@ -574,7 +589,7 @@ class BasicQuiz:
         filter_type = self.view_qtype_var.get()
         
         if filter_type == "all":
-            question_types = ["multiple_choice", "true_false", "drag_drop"]  # Add drag_drop
+            question_types = ["multiple_choice", "true_false", "drag_drop"]
         else:
             question_types = [filter_type]
         
@@ -616,7 +631,7 @@ class BasicQuiz:
                 
                 elif qtype == "drag_drop":
                     items = q.get("items", {})
-                    correct_order = q.get("correct_order", {});
+                    correct_order = q.get("correct_order", {})
                     
                     self.questions_text.insert(tk.END, "🔄 Items to arrange:\n")
                     for item_key, item_value in items.items():
@@ -629,6 +644,19 @@ class BasicQuiz:
                     order_text = " → ".join([items[item_key] for item_key, _ in sorted_items])
                     self.questions_text.insert(tk.END, f"{order_text}\n")
             
+            # Add delete button for each question
+            delete_btn = tk.Button(
+                self.questions_text, 
+                text="🗑️ Delete", 
+                command=lambda qtype=qtype, index=i-1: self.delete_question(qtype, index),
+                bg=self.colors["error"], 
+                fg="black",
+                relief="flat", 
+                cursor="hand2"
+            )
+            self.questions_text.window_create(tk.END, window=delete_btn)
+            self.questions_text.insert(tk.END, "\n\n")
+            
             self.questions_text.insert(tk.END, f"\n{'-'*50}\n\n")
             total_questions += 1
     
@@ -637,7 +665,7 @@ class BasicQuiz:
             self.questions_text.insert(tk.END, "ℹ️  Use the question tabs to add questions.\n")
         else:
             self.questions_text.insert(tk.END, f"\n📊 Total Questions Displayed: {total_questions}\n")
-        
+    
         self.questions_text.config(state=tk.DISABLED)
         self.questions_text.see("1.0")
 
