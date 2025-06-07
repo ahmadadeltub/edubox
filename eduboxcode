@@ -73,6 +73,9 @@ class BasicQuiz:
         self.dd_drag_timer = 0  # Timer for drag selection
         self.dd_selection_mode = True  # True for selecting items, False for confirming
 
+        # Add this flag to control camera loop exit
+        self.exit_camera = False
+
     def setup_styles(self):
         style = ttk.Style()
         style.theme_use("clam")
@@ -624,6 +627,9 @@ class BasicQuiz:
         self.run_camera_interface()
 
     def run_camera_interface(self):
+        # Reset the exit flag
+        self.exit_camera = False
+        
         try:
             cap = cv2.VideoCapture(0)
             if not cap.isOpened():
@@ -631,6 +637,10 @@ class BasicQuiz:
                 return
                 
             while True:
+                # Check if we should exit the camera loop
+                if self.exit_camera:
+                    break
+                    
                 ret, frame = cap.read()
                 if not ret:
                     break
@@ -674,6 +684,8 @@ class BasicQuiz:
             if 'cap' in locals():
                 cap.release()
             cv2.destroyAllWindows()
+            
+            # Return to main menu after camera cleanup
             self.create_main_menu()
 
     def draw_name_selection(self, frame, w, h):
@@ -1149,9 +1161,8 @@ class BasicQuiz:
                 self.dd_selected_items = []
                 self.dd_selection_mode = True
             elif selection == "home":
-                cv2.destroyAllWindows()
-                self.create_main_menu()
-                return
+                # Set flag to exit camera loop and return to main menu
+                self.exit_camera = True
 
     # -------- Helper methods for adding questions --------
     def add_mc(self):
