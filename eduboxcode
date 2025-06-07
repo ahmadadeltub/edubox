@@ -404,16 +404,77 @@ class BasicQuiz:
         container = tk.Frame(frame, bg=self.colors["bg"])
         container.pack(fill=tk.BOTH, expand=True, padx=40, pady=30)
         
-        tk.Label(container, text="Student Name:", font=("SF Pro Text", 16, "bold"),
+        # Add Student Section
+        add_section = tk.Frame(container, bg=self.colors["bg"])
+        add_section.pack(fill=tk.X, pady=(0, 30))
+        
+        tk.Label(add_section, text="Add New Student:", font=("SF Pro Text", 18, "bold"),
+                bg=self.colors["bg"], fg=self.colors["accent"]).pack(anchor="w", pady=(0, 15))
+        
+        tk.Label(add_section, text="Student Name:", font=("SF Pro Text", 16, "bold"),
                 bg=self.colors["bg"], fg=self.colors["fg"]).pack(anchor="w", pady=(0, 10))
         
-        self.student_entry = tk.Entry(container, font=("SF Pro Text", 14), width=50,
+        self.student_entry = tk.Entry(add_section, font=("SF Pro Text", 14), width=50,
                                     bg=self.colors["button_bg"], fg=self.colors["fg"],
                                     insertbackground=self.colors["fg"], relief="flat", bd=10)
-        self.student_entry.pack(pady=(0, 30), ipady=8)
+        self.student_entry.pack(pady=(0, 20), ipady=8)
         
-        add_btn = self.create_modern_button(container, "➕ Add Student", self.add_student)
+        add_btn = self.create_modern_button(add_section, "➕ Add Student", self.add_student)
         add_btn.pack()
+        
+        # Separator line
+        separator = tk.Frame(container, height=2, bg=self.colors["accent"])
+        separator.pack(fill=tk.X, pady=30)
+        
+        # Students List Section
+        list_section = tk.Frame(container, bg=self.colors["bg"])
+        list_section.pack(fill=tk.BOTH, expand=True)
+        
+        # Header for students list
+        list_header = tk.Frame(list_section, bg=self.colors["bg"])
+        list_header.pack(fill=tk.X, pady=(0, 20))
+        
+        tk.Label(list_header, text="Current Students:", font=("SF Pro Text", 18, "bold"),
+                bg=self.colors["bg"], fg=self.colors["accent"]).pack(side=tk.LEFT)
+        
+        refresh_btn = self.create_modern_button(list_header, "🔄 Refresh", self.refresh_student_list, 120, 35)
+        refresh_btn.pack(side=tk.RIGHT)
+        
+        # Frame for the listbox and scrollbar
+        listbox_frame = tk.Frame(list_section, bg=self.colors["bg"])
+        listbox_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 20))
+        
+        # Listbox for students with scrollbar
+        self.students_listbox = tk.Listbox(listbox_frame, font=("SF Pro Text", 14), height=15,
+                                         bg=self.colors["button_bg"], fg=self.colors["fg"],
+                                         selectbackground=self.colors["accent"],
+                                         selectforeground="white",
+                                         relief="flat", bd=5, activestyle="none")
+        
+        # Scrollbar for listbox
+        listbox_scrollbar = tk.Scrollbar(listbox_frame, orient=tk.VERTICAL, command=self.students_listbox.yview)
+        self.students_listbox.configure(yscrollcommand=listbox_scrollbar.set)
+        
+        self.students_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        listbox_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        # Buttons frame for student management
+        buttons_frame = tk.Frame(list_section, bg=self.colors["bg"])
+        buttons_frame.pack(fill=tk.X, pady=(0, 10))
+        
+        delete_btn = self.create_modern_button(buttons_frame, "🗑️ Delete Selected", self.delete_student)
+        delete_btn.pack(side=tk.LEFT, padx=(0, 10))
+        
+        clear_all_btn = self.create_modern_button(buttons_frame, "🗑️ Clear All Students", self.clear_all_students)
+        clear_all_btn.pack(side=tk.LEFT, padx=10)
+        
+        # Student count label
+        self.student_count_label = tk.Label(list_section, text="", font=("SF Pro Text", 12),
+                                          bg=self.colors["bg"], fg=self.colors["fg"])
+        self.student_count_label.pack(anchor="w", pady=(10, 0))
+        
+        # Load students initially
+        self.refresh_student_list()
 
     def create_scores_tab(self, nb):
         frame = ttk.Frame(nb)
@@ -422,16 +483,23 @@ class BasicQuiz:
         container = tk.Frame(frame, bg=self.colors["bg"])
         container.pack(fill=tk.BOTH, expand=True, padx=40, pady=30)
         
-        tk.Label(container, text="Student Scores:", font=("SF Pro Text", 16, "bold"),
+        tk.Label(container, text="Student Total Scores:", font=("SF Pro Text", 16, "bold"),
                 bg=self.colors["bg"], fg=self.colors["fg"]).pack(anchor="w", pady=(0, 20))
         
         self.score_text = tk.Text(container, font=("SF Mono", 12), width=80, height=25,
-                                bg=self.colors["button_bg"], fg=self.colors["fg"],
-                                insertbackground=self.colors["fg"], relief="flat", bd=10)
+                                bg=self.colors["button_bg"], fg="black",  # Changed to black
+                                insertbackground="black", relief="flat", bd=10)  # Changed to black
         self.score_text.pack(pady=(0, 20))
         
-        refresh_btn = self.create_modern_button(container, "🔄 Refresh", self.load_scores)
-        refresh_btn.pack()
+        # Add buttons frame for additional controls
+        buttons_frame = tk.Frame(container, bg=self.colors["bg"])
+        buttons_frame.pack(pady=(0, 10))
+        
+        refresh_btn = self.create_modern_button(buttons_frame, "🔄 Refresh", self.load_scores)
+        refresh_btn.pack(side=tk.LEFT, padx=(0, 10))
+        
+        clear_scores_btn = self.create_modern_button(buttons_frame, "🗑️ Clear All Scores", self.clear_all_scores)
+        clear_scores_btn.pack(side=tk.LEFT)
         
         self.load_scores()
 
@@ -1261,39 +1329,212 @@ class BasicQuiz:
         if name not in self.students:
             self.students.append(name)
             self.save_students()
+            self.student_entry.delete(0, tk.END)
+            # Refresh the student list display
+            self.refresh_student_list()
             messagebox.showinfo("Added", f"Student '{name}' added successfully!")
         else:
             messagebox.showwarning("Warning", f"Student '{name}' already exists!")
-        self.student_entry.delete(0, tk.END)
+            self.student_entry.delete(0, tk.END)
 
     def load_scores(self):
+        """Load and display total scores for each student"""
         self.score_text.delete("1.0", tk.END)
+        
         if not os.path.exists(self.scores_file):
-            self.score_text.insert(tk.END, "No scores yet\n\n")
-            self.score_text.insert(tk.END, "ℹ️  Scores will appear here after students take quizzes.")
+            self.score_text.insert(tk.END, "📊 STUDENT TOTAL SCORES\n")
+            self.score_text.insert(tk.END, "=" * 50 + "\n\n")
+            self.score_text.insert(tk.END, "No scores recorded yet.\n\n")
+            self.score_text.insert(tk.END, "ℹ️  Total scores will appear here after students take quizzes.\n")
+            self.score_text.insert(tk.END, "Each student's scores from multiple quiz attempts will be summed.")
             return
         
         try:
             wb = load_workbook(self.scores_file)
             ws = wb.active
             
-            # Add header
-            self.score_text.insert(tk.END, "📊 STUDENT SCORES\n")
-            self.score_text.insert(tk.END, "=" * 50 + "\n\n")
+            # Dictionary to store total scores for each student
+            student_totals = {}
+            student_attempts = {}  # Track number of attempts per student
             
-            score_count = 0
-            for row in ws.iter_rows(min_row=2, values_only=True):
-                if row[0] and row[1] is not None:
-                    self.score_text.insert(tk.END, f"👤 {row[0]}: {row[1]} points\n")
-                    score_count += 1
+            # Calculate total scores for each student
+            for row in ws.iter_rows(min_row=2, values_only=True):  # Skip header row
+                if row[0] and row[1] is not None:  # Check both name and score exist
+                    name = row[0]
+                    score = row[1]
+                    
+                    if name in student_totals:
+                        student_totals[name] += score
+                        student_attempts[name] += 1
+                    else:
+                        student_totals[name] = score
+                        student_attempts[name] = 1
             
-            if score_count == 0:
+            # Display the results
+            self.score_text.insert(tk.END, "📊 STUDENT TOTAL SCORES\n")
+            self.score_text.insert(tk.END, "=" * 60 + "\n\n")
+            
+            if not student_totals:
                 self.score_text.insert(tk.END, "No scores recorded yet.\n")
-            else:
-                self.score_text.insert(tk.END, f"\n📈 Total Entries: {score_count}")
+                return
+            
+            # Sort students by total score (highest first)
+            sorted_students = sorted(student_totals.items(), key=lambda x: x[1], reverse=True)
+            
+            # Display header
+            self.score_text.insert(tk.END, f"{'RANK':<6} {'STUDENT NAME':<25} {'TOTAL SCORE':<12} {'ATTEMPTS':<10} {'AVERAGE':<8}\n")
+            self.score_text.insert(tk.END, "-" * 70 + "\n")
+            
+            # Display each student's total scores
+            for rank, (name, total_score) in enumerate(sorted_students, 1):
+                attempts = student_attempts[name]
+                average = total_score / attempts if attempts > 0 else 0
+                
+                # Add rank indicator
+                if rank == 1:
+                    rank_icon = "🥇"
+                elif rank == 2:
+                    rank_icon = "🥈"
+                elif rank == 3:
+                    rank_icon = "🥉"
+                else:
+                    rank_icon = f"#{rank}"
+                
+                self.score_text.insert(tk.END, f"{rank_icon:<6} {name:<25} {total_score:<12} {attempts:<10} {average:.1f}\n")
+            
+            # Add summary statistics
+            self.score_text.insert(tk.END, "\n" + "=" * 60 + "\n")
+            self.score_text.insert(tk.END, "📈 SUMMARY STATISTICS\n")
+            self.score_text.insert(tk.END, "-" * 30 + "\n")
+            
+            total_students = len(student_totals)
+            total_attempts = sum(student_attempts.values())
+            highest_score = max(student_totals.values()) if student_totals else 0
+            lowest_score = min(student_totals.values()) if student_totals else 0
+            average_total = sum(student_totals.values()) / total_students if total_students > 0 else 0
+            
+            self.score_text.insert(tk.END, f"👥 Total Students: {total_students}\n")
+            self.score_text.insert(tk.END, f"📝 Total Quiz Attempts: {total_attempts}\n")
+            self.score_text.insert(tk.END, f"🎯 Highest Total Score: {highest_score}\n")
+            self.score_text.insert(tk.END, f"📉 Lowest Total Score: {lowest_score}\n")
+            self.score_text.insert(tk.END, f"📊 Average Total Score: {average_total:.1f}\n")
+            
+            # Show top performer
+            if sorted_students:
+                top_student = sorted_students[0]
+                self.score_text.insert(tk.END, f"\n🏆 TOP PERFORMER: {top_student[0]} with {top_student[1]} total points!")
                 
         except Exception as e:
-            messagebox.showerror("Error", f"Could not load scores: {str(e)}")
+            self.score_text.delete("1.0", tk.END)
+            self.score_text.insert(tk.END, f"❌ Error loading scores: {str(e)}\n\n")
+            self.score_text.insert(tk.END, "Please check if the scores file is corrupted or in use by another program.")
+
+    def clear_all_scores(self):
+        """Clear all scores with confirmation"""
+        result = messagebox.askyesno(
+            "Clear All Scores", 
+            "Are you sure you want to delete ALL student scores?\n\nThis action cannot be undone!",
+            icon="warning"
+        )
+        
+        if result:
+            try:
+                if os.path.exists(self.scores_file):
+                    os.remove(self.scores_file)
+                
+                # Create new empty scores file with header
+                wb = Workbook()
+                ws = wb.active
+                ws.append(["Name", "Score"])
+                wb.save(self.scores_file)
+                
+                self.load_scores()  # Refresh the display
+                messagebox.showinfo("Success", "All scores have been cleared!")
+                
+            except Exception as e:
+                messagebox.showerror("Error", f"Could not clear scores: {str(e)}")
+
+    def refresh_student_list(self):
+        """Refresh the students listbox display"""
+        # Clear current listbox
+        self.students_listbox.delete(0, tk.END)
+        
+        # Reload students from file
+        self.students = self.load_students()
+        
+        # Populate listbox
+        for i, student in enumerate(self.students, 1):
+            self.students_listbox.insert(tk.END, f"{i:2d}. {student}")
+        
+        # Update count label
+        count = len(self.students)
+        if count == 0:
+            self.student_count_label.config(text="📝 No students added yet", fg=self.colors["warning"])
+        elif count == 1:
+            self.student_count_label.config(text="📝 1 student registered", fg=self.colors["success"])
+        else:
+            self.student_count_label.config(text=f"📝 {count} students registered", fg=self.colors["success"])
+
+    def delete_student(self):
+        """Delete selected student with confirmation"""
+        selection = self.students_listbox.curselection()
+        if not selection:
+            messagebox.showwarning("No Selection", "Please select a student to delete!")
+            return
+        
+        selected_index = selection[0]
+        student_name = self.students[selected_index]
+        
+        # Confirmation dialog
+        result = messagebox.askyesno(
+            "Delete Student", 
+            f"Are you sure you want to delete '{student_name}'?\n\nThis action cannot be undone!",
+            icon="warning"
+        )
+        
+        if result:
+            try:
+                # Remove student from list
+                self.students.pop(selected_index)
+                
+                # Save updated list
+                self.save_students()
+                
+                # Refresh display
+                self.refresh_student_list()
+                
+                messagebox.showinfo("Success", f"Student '{student_name}' has been deleted!")
+                
+            except Exception as e:
+                messagebox.showerror("Error", f"Could not delete student: {str(e)}")
+
+    def clear_all_students(self):
+        """Clear all students with confirmation"""
+        if not self.students:
+            messagebox.showinfo("No Students", "There are no students to delete!")
+            return
+        
+        result = messagebox.askyesno(
+            "Clear All Students", 
+            f"Are you sure you want to delete ALL {len(self.students)} students?\n\nThis action cannot be undone!",
+            icon="warning"
+        )
+        
+        if result:
+            try:
+                # Clear students list
+                self.students = []
+                
+                # Save empty list
+                self.save_students()
+                
+                # Refresh display
+                self.refresh_student_list()
+                
+                messagebox.showinfo("Success", "All students have been deleted!")
+                
+            except Exception as e:
+                messagebox.showerror("Error", f"Could not clear students: {str(e)}")
 
     def draw_drag_drop_interface(self, frame, question, w, h, start_y):
         items = question.get("items", {})
@@ -1302,7 +1543,7 @@ class BasicQuiz:
         if self.dd_selection_mode:
             # Show available items to select - with dark blue background
             available_text = "Available Items:"
-            available_size = cv2.getTextSize(available_text, cv2.FONT_HERSHEY_SIMPLEX, 1.2, 3)[0]
+            available_size = cv2.getTextSize(available_text, cv2.FONT_HERSHEY_SIMPLEX, 1.2,  3)[0]
             cv2.rectangle(frame, (40, start_y - 50), (60 + available_size[0], start_y - 10), (139, 69, 19), -1)  # Dark blue background
             cv2.putText(frame, available_text, (50, start_y - 20), 
                        cv2.FONT_HERSHEY_SIMPLEX, 1.2, (255, 255, 255), 3)  # White text
