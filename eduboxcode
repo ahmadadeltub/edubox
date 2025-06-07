@@ -1074,7 +1074,14 @@ class BasicQuiz:
                 question = self.current_questions[self.current_question_idx]
                 
                 if self.selected_qtype == "drag_drop":
-                    if selection == "confirm":
+                    if selection == "reset":
+                        # Reset the selection - clear all selected items
+                        self.dd_selected_items = []
+                        self.dd_selection_mode = True
+                        # Don't change question_answered or move to next question
+                        return
+                        
+                    elif selection == "confirm":
                         # Check if order is correct
                         correct_order = question.get("correct_order", {})
                         is_correct = True
@@ -1327,40 +1334,31 @@ class BasicQuiz:
                 
                 self.selection_boxes.append((item_key, box))
             
-            # Add confirm button if all items selected
-            if len(self.dd_selected_items) == len(items):
-                confirm_y = start_y + len(available_items) * (box_height + box_spacing) + 40
-                confirm_box = [w//2 - 150, confirm_y, w//2 + 150, confirm_y + 60]
+            # Add RESET button if any items are selected
+            if self.dd_selected_items:
+                reset_y = start_y + len(available_items) * (box_height + box_spacing) + 20
+                reset_box = [w//2 - 300, reset_y, w//2 - 50, reset_y + 60]
                 
-                color = (137, 180, 250) if self.hover_option == "confirm" else (0, 255, 0)
-                thickness = 6 if self.hover_option == "confirm" else 3
+                color = (137, 180, 250) if self.hover_option == "reset" else (248, 139, 168)  # Pink color for reset
+                thickness = 6 if self.hover_option == "reset" else 3
                 
-                cv2.rectangle(frame, (confirm_box[0], confirm_box[1]), (confirm_box[2], confirm_box[3]), color, thickness)
-                cv2.rectangle(frame, (confirm_box[0]+3, confirm_box[1]+3), (confirm_box[2]-3, confirm_box[3]-3), (0, 255, 0), -1)
+                cv2.rectangle(frame, (reset_box[0], reset_box[1]), (reset_box[2], reset_box[3]), color, thickness)
+                cv2.rectangle(frame, (reset_box[0]+3, reset_box[1]+3), (reset_box[2]-3, reset_box[3]-3), (248, 139, 168), -1)
                 
-                cv2.putText(frame, "CONFIRM", (confirm_box[0] + 60, confirm_box[1] + 40), 
+                cv2.putText(frame, "RESET", (reset_box[0] + 75, reset_box[1] + 40), 
                            cv2.FONT_HERSHEY_SIMPLEX, 1.2, (255, 255, 255), 3)
                 
-                if self.hover_option == "confirm" and self.selection_timer > 0:
-                    progress_width = int((self.selection_timer / self.selection_threshold) * (confirm_box[2] - confirm_box[0] - 10))
-                    cv2.rectangle(frame, (confirm_box[0] + 5, confirm_box[3] - 15), 
-                                 (confirm_box[0] + 5 + progress_width, confirm_box[3] - 5), (255, 255, 0), -1)
+                if self.hover_option == "reset" and self.selection_timer > 0:
+                    progress_width = int((self.selection_timer / self.selection_threshold) * (reset_box[2] - reset_box[0] - 10))
+                    cv2.rectangle(frame, (reset_box[0] + 5, reset_box[3] - 15), 
+                                 (reset_box[0] + 5 + progress_width, reset_box[3] - 5), (255, 255, 0), -1)
                 
-                self.selection_boxes.append(("confirm", confirm_box))
-        else:
-            # Show selected order
-            cv2.putText(frame, "Your Order:", (50, start_y - 30), 
-                       cv2.FONT_HERSHEY_SIMPLEX, 1.2, (255, 255, 255), 3)
-            
-            for i, item_key in enumerate(self.dd_selected_items):
-                item_text = items.get(item_key, "")
-                y_pos = start_y + (i * 50)
-                cv2.putText(frame, f"{i+1}. {item_text}", (50, y_pos), 
-                           cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
-            
-            # Draw confirm button
-            confirm_y = start_y + len(self.dd_selected_items) * 50 + 40
-            confirm_box = [w//2 - 150, confirm_y, w//2 + 150, confirm_y + 60]
+                self.selection_boxes.append(("reset", reset_box))
+        
+        # Add confirm button if all items selected
+        if len(self.dd_selected_items) == len(items):
+            confirm_y = start_y + len(available_items) * (box_height + box_spacing) + 20
+            confirm_box = [w//2 + 50, confirm_y, w//2 + 300, confirm_y + 60]  # Moved to the right
             
             color = (137, 180, 250) if self.hover_option == "confirm" else (0, 255, 0)
             thickness = 6 if self.hover_option == "confirm" else 3
@@ -1377,6 +1375,119 @@ class BasicQuiz:
                              (confirm_box[0] + 5 + progress_width, confirm_box[3] - 5), (255, 255, 0), -1)
             
             self.selection_boxes.append(("confirm", confirm_box))
+        
+        # Add instruction text at the bottom
+        instruction_y = h - 50
+        if self.dd_selected_items:
+            cv2.putText(frame, "Point to RESET to clear selections or CONFIRM when done", 
+                       (50, instruction_y), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
+        else:
+            cv2.putText(frame, "Point to items in the correct order", 
+                       (50, instruction_y), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
+
+def handle_selection(self, selection):
+    if self.student_step == 1:  # Name selection
+        self.selected_name = selection
+        self.student_step = 2
+        
+    elif self.student_step == 2:  # Question type selection
+        self.selected_qtype = selection
+        self.current_questions = self.questions.get(selection, [])
+        if not self.current_questions:
+            return
+        self.current_question_idx = 0
+        self.student_score = 0
+        self.question_answered = False
+        
+        # Reset drag and drop variables
+        self.dd_selected_items = []
+        self.dd_selection_mode = True
+        
+        self.student_step = 3
+        
+    elif self.student_step == 3:  # Quiz answers
+        if not self.question_answered and self.current_question_idx < len(self.current_questions):
+            question = self.current_questions[self.current_question_idx]
+            
+            if self.selected_qtype == "drag_drop":
+                if selection == "reset":
+                    # Reset the selection - clear all selected items
+                    self.dd_selected_items = []
+                    self.dd_selection_mode = True
+                    # Don't change question_answered or move to next question
+                    return
+                    
+                elif selection == "confirm":
+                    # Check if order is correct
+                    correct_order = question.get("correct_order", {})
+                    is_correct = True
+                    
+                    for i, item_key in enumerate(self.dd_selected_items):
+                        expected_position = correct_order.get(item_key, -1)
+                        if expected_position != i + 1:
+                            is_correct = False
+                            break
+                    
+                    if is_correct:
+                        self.student_score += 1
+                    
+                    self.question_answered = True
+                    self.dd_selected_items = []
+                    self.dd_selection_mode = True
+                    
+                    def move_to_next():
+                        self.current_question_idx += 1
+                        self.question_answered = False
+                        if self.current_question_idx >= len(self.current_questions):
+                            self.save_score(self.selected_name, self.student_score)
+                            self.student_step = 4
+                    
+                    threading.Timer(2.0, move_to_next).start()
+                    
+                elif selection not in self.dd_selected_items:
+                    # Add item to selection
+                    self.dd_selected_items.append(selection)
+                    
+            else:  # Multiple choice or True/False
+                is_correct = False
+                
+                if self.selected_qtype == "multiple_choice":
+                    correct_answers = question.get("correct", question.get("answer", []))
+                    if isinstance(correct_answers, str):
+                        correct_answers = [correct_answers]
+                    is_correct = selection in correct_answers
+                else:  # true_false
+                    is_correct = selection == question.get("answer", "")
+                
+                if is_correct:
+                    self.student_score += 1
+                
+                self.question_answered = True
+                
+                def move_to_next():
+                    self.current_question_idx += 1
+                    self.question_answered = False
+                    if self.current_question_idx >= len(self.current_questions):
+                        self.save_score(self.selected_name, self.student_score)
+                        self.student_step = 4
+                
+                threading.Timer(2.0, move_to_next).start()
+            
+    elif self.student_step == 4:  # Results actions
+        if selection == "restart":
+            self.student_step = 1
+            self.selected_name = None
+            self.selected_qtype = None
+            self.current_questions = []
+            self.current_question_idx = 0
+            self.student_score = 0
+            self.question_answered = False
+            self.dd_selected_items = []
+            self.dd_selection_mode = True
+        elif selection == "home":
+            cv2.destroyAllWindows()
+            self.create_main_menu()
+            return
 
 # Move this outside the class - at module level (no indentation)
 if __name__ == "__main__":
