@@ -66,6 +66,13 @@ class BasicQuiz:
         self.mp_drawing = None
         self.hands = None
 
+        # Add drag and drop specific variables
+        self.dd_selected_items = []  # Track selected items in order
+        self.dd_drop_zones = []  # Drop zone positions
+        self.dd_dragging_item = None  # Currently selected item for dragging
+        self.dd_drag_timer = 0  # Timer for drag selection
+        self.dd_selection_mode = True  # True for selecting items, False for confirming
+
     def setup_styles(self):
         style = ttk.Style()
         style.theme_use("clam")
@@ -242,9 +249,10 @@ class BasicQuiz:
         notebook = ttk.Notebook(self.root, style="Modern.TNotebook")
         notebook.pack(fill=tk.BOTH, expand=True, padx=20, pady=(0, 20))
         
-        # Create tabs
+        # Create tabs - ADD DRAG & DROP TAB
         self.create_mc_tab(notebook)
         self.create_tf_tab(notebook)
+        self.create_drag_drop_tab(notebook)  # Add this line
         self.create_view_questions_tab(notebook)
         self.create_add_student_tab(notebook)
         self.create_scores_tab(notebook)
@@ -334,6 +342,58 @@ class BasicQuiz:
         add_btn = self.create_modern_button(container, "➕ Add Question", self.add_tf)
         add_btn.pack(pady=20)
 
+    def create_drag_drop_tab(self, nb):
+        frame = ttk.Frame(nb)
+        nb.add(frame, text="🔄 Drag & Drop")
+        
+        container = tk.Frame(frame, bg=self.colors["bg"])
+        container.pack(fill=tk.BOTH, expand=True, padx=40, pady=30)
+        
+        # Question input
+        tk.Label(container, text="Question:", font=("SF Pro Text", 16, "bold"),
+                bg=self.colors["bg"], fg=self.colors["fg"]).pack(anchor="w", pady=(0, 10))
+        
+        self.dd_q = tk.Entry(container, font=("SF Pro Text", 14), width=80,
+                            bg=self.colors["button_bg"], fg=self.colors["fg"],
+                            insertbackground=self.colors["fg"], relief="flat", bd=10)
+        self.dd_q.pack(pady=(0, 20), ipady=8)
+        
+        # Instructions
+        tk.Label(container, text="Enter items to be arranged in correct order (1 = first, 2 = second, etc.)",
+                font=("SF Pro Text", 12), bg=self.colors["bg"], fg=self.colors["fg"]).pack(anchor="w", pady=(0, 20))
+        
+        # Items frame
+        items_frame = tk.Frame(container, bg=self.colors["bg"])
+        items_frame.pack(fill=tk.X, pady=(0, 30))
+        
+        self.dd_items = {}
+        for i in range(4):  # Allow up to 4 items
+            item_frame = tk.Frame(items_frame, bg=self.colors["bg"])
+            item_frame.pack(fill=tk.X, pady=5)
+            
+            tk.Label(item_frame, text=f"Item {i+1}:", font=("SF Pro Text", 14),
+                    bg=self.colors["bg"], fg=self.colors["fg"], width=8).pack(side=tk.LEFT)
+            
+            entry = tk.Entry(item_frame, font=("SF Pro Text", 12), width=40,
+                            bg=self.colors["button_bg"], fg=self.colors["fg"],
+                            insertbackground=self.colors["fg"], relief="flat", bd=5)
+            entry.pack(side=tk.LEFT, padx=(10, 20), ipady=5)
+            
+            tk.Label(item_frame, text="Position:", font=("SF Pro Text", 12),
+                    bg=self.colors["bg"], fg=self.colors["fg"]).pack(side=tk.LEFT, padx=(0, 5))
+            
+            pos_var = tk.StringVar(value=str(i+1))
+            pos_entry = tk.Entry(item_frame, textvariable=pos_var, font=("SF Pro Text", 12), width=5,
+                               bg=self.colors["button_bg"], fg=self.colors["fg"],
+                               insertbackground=self.colors["fg"], relief="flat", bd=5)
+            pos_entry.pack(side=tk.LEFT, ipady=5)
+            
+            self.dd_items[i] = (entry, pos_var)
+        
+        # Add button
+        add_btn = self.create_modern_button(container, "➕ Add Question", self.add_dd)
+        add_btn.pack(pady=20)
+
     def create_add_student_tab(self, nb):
         frame = ttk.Frame(nb)
         nb.add(frame, text="👤 Add Student")
@@ -395,7 +455,8 @@ class BasicQuiz:
         type_options = [
             ("all", "All Questions"),
             ("multiple_choice", "Multiple Choice"),
-            ("true_false", "True/False")
+            ("true_false", "True/False"),
+            ("drag_drop", "Drag & Drop")  # Add this line
         ]
         
         for value, text in type_options:
@@ -409,7 +470,7 @@ class BasicQuiz:
         text_frame = tk.Frame(container, bg=self.colors["bg"])
         text_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 20))
         
-        self.questions_text = tk.Text(text_frame, font=("SF Pro Text", 11), width=100, height=30,
+        self.questions_text = tk.Text(text_frame, font=("SF Mono", 11), width=100, height=30,
                                     bg=self.colors["button_bg"], fg=self.colors["fg"],
                                     insertbackground=self.colors["fg"], relief="flat", bd=10,
                                     wrap=tk.WORD, state=tk.DISABLED)
@@ -442,7 +503,7 @@ class BasicQuiz:
         filter_type = self.view_qtype_var.get()
         
         if filter_type == "all":
-            question_types = ["multiple_choice", "true_false"]
+            question_types = ["multiple_choice", "true_false", "drag_drop"]  # Add drag_drop
         else:
             question_types = [filter_type]
         
@@ -454,7 +515,12 @@ class BasicQuiz:
                 continue
                 
             # Add section header
-            type_name = "Multiple Choice" if qtype == "multiple_choice" else "True/False"
+            type_name = {
+                "multiple_choice": "Multiple Choice",
+                "true_false": "True/False",
+                "drag_drop": "Drag & Drop"
+            }.get(qtype, qtype)
+            
             self.questions_text.insert(tk.END, f"\n{'='*60}\n")
             self.questions_text.insert(tk.END, f"📝 {type_name.upper()} QUESTIONS ({len(questions_list)} total)\n")
             self.questions_text.insert(tk.END, f"{'='*60}\n\n")
@@ -477,17 +543,32 @@ class BasicQuiz:
                     answer = q.get("answer", "")
                     self.questions_text.insert(tk.END, f"💡 Correct Answer: {answer}\n")
                 
-                self.questions_text.insert(tk.END, f"\n{'-'*50}\n\n")
-                total_questions += 1
-        
+                elif qtype == "drag_drop":
+                    items = q.get("items", {})
+                    correct_order = q.get("correct_order", {});
+                    
+                    self.questions_text.insert(tk.END, "🔄 Items to arrange:\n")
+                    for item_key, item_value in items.items():
+                        position = correct_order.get(item_key, "?")
+                        self.questions_text.insert(tk.END, f"   📌 {item_value} (Position: {position})\n")
+                    
+                    # Show correct order
+                    sorted_items = sorted(items.items(), key=lambda x: correct_order.get(x[0], 0))
+                    self.questions_text.insert(tk.END, f"\n💡 Correct Order: ")
+                    order_text = " → ".join([items[item_key] for item_key, _ in sorted_items])
+                    self.questions_text.insert(tk.END, f"{order_text}\n")
+            
+            self.questions_text.insert(tk.END, f"\n{'-'*50}\n\n")
+            total_questions += 1
+    
         if total_questions == 0:
             self.questions_text.insert(tk.END, "\n📝 No questions found.\n\n")
-            self.questions_text.insert(tk.END, "ℹ️  Use the 'Multiple Choice' or 'True/False' tabs to add questions.\n")
+            self.questions_text.insert(tk.END, "ℹ️  Use the question tabs to add questions.\n")
         else:
             self.questions_text.insert(tk.END, f"\n📊 Total Questions Displayed: {total_questions}\n")
         
         self.questions_text.config(state=tk.DISABLED)
-        self.questions_text.see("1.0")  # Scroll to top
+        self.questions_text.see("1.0")
 
     def clear_all_questions(self):
         """Clear all questions with confirmation"""
@@ -662,21 +743,23 @@ class BasicQuiz:
         self.selection_boxes = []
         available_types = []
         
-        # Only show types that have questions
+        # Only show types that have questions - ADD DRAG_DROP
         if self.questions.get("multiple_choice", []):
             available_types.append(("multiple_choice", "Multiple Choice"))
         if self.questions.get("true_false", []):
             available_types.append(("true_false", "True/False"))
+        if self.questions.get("drag_drop", []):
+            available_types.append(("drag_drop", "Drag & Drop"))
         
         if not available_types:
             cv2.putText(frame, "No questions available!", (w//2 - 200, h//2), 
                        cv2.FONT_HERSHEY_SIMPLEX, 1.5, (243, 139, 168), 3)
             return
         
-        box_width = 600  # Increased from 500
-        box_height = 120  # Increased from 100
-        spacing = 60  # Increased spacing
-        start_y = 250  # Moved down to center better
+        box_width = 600
+        box_height = 120
+        spacing = 60
+        start_y = 250
         
         for i, (qtype, display_name) in enumerate(available_types):
             y = start_y + (i * (box_height + spacing))
@@ -684,25 +767,25 @@ class BasicQuiz:
             box = [x, y, x + box_width, y + box_height]
             
             # Highlight if hovering
-            color = (137, 180, 250) if self.hover_option == qtype else (139, 69, 19)  # Changed to dark blue
+            color = (137, 180, 250) if self.hover_option == qtype else (139, 69, 19)
             thickness = 6 if self.hover_option == qtype else 3
             
             cv2.rectangle(frame, (box[0], box[1]), (box[2], box[3]), color, thickness)
-            cv2.rectangle(frame, (box[0]+3, box[1]+3), (box[2]-3, box[3]-3), (139, 69, 19), -1)  # Dark blue background
+            cv2.rectangle(frame, (box[0]+3, box[1]+3), (box[2]-3, box[3]-3), (139, 69, 19), -1)
             
-            # Center type name text - white bold and larger
-            text_size = cv2.getTextSize(display_name, cv2.FONT_HERSHEY_SIMPLEX, 1.5, 4)[0]  # Increased from 1.2, 3
+            # Center type name text
+            text_size = cv2.getTextSize(display_name, cv2.FONT_HERSHEY_SIMPLEX, 1.5, 4)[0]
             text_x = box[0] + (box_width - text_size[0]) // 2
             text_y = box[1] + (box_height + text_size[1]) // 2
             cv2.putText(frame, display_name, (text_x, text_y), 
-                       cv2.FONT_HERSHEY_SIMPLEX, 1.5, (255, 255, 255), 4)  # Larger and bolder text
+                       cv2.FONT_HERSHEY_SIMPLEX, 1.5, (255, 255, 255), 4)
             
-            # Draw selection progress with green color
+            # Draw selection progress
             if self.hover_option == qtype and self.selection_timer > 0:
                 progress_width = int((self.selection_timer / self.selection_threshold) * (box[2] - box[0] - 10))
                 cv2.rectangle(frame, (box[0] + 5, box[3] - 25), 
-                             (box[0] + 5 + progress_width, box[3] - 5), (0, 255, 0), -1)  # Green progress
-            
+                             (box[0] + 5 + progress_width, box[3] - 5), (0, 255, 0), -1)
+        
             self.selection_boxes.append((qtype, box))
 
     def draw_quiz_interface(self, frame, question, w, h):
@@ -713,18 +796,24 @@ class BasicQuiz:
         cv2.putText(frame, f"Score: {self.student_score}", 
                    (20, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)  # White bold text
         
-        # Show different instruction based on answer status
-        if self.question_answered:
+        # Show instruction based on question type
+        if self.selected_qtype == "drag_drop":
+            if self.dd_selection_mode:
+                cv2.putText(frame, "Point to items in correct order", (20, 85), 
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+            else:
+                cv2.putText(frame, "Point to CONFIRM to submit your answer", (20, 85), 
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+        elif self.question_answered:
             cv2.putText(frame, "Answer selected! Moving to next question...", (20, 85), 
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)  # White bold text
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
         else:
             cv2.putText(frame, "Point to your answer and hold for 2 seconds", (20, 85), 
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)  # White bold text
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
         
-        # Center the question text - moved down with larger font
+        # Draw question text
         question_text = question.get('question', '')
-        # Break long questions into multiple lines with shorter line length for larger text
-        max_chars_per_line = 35  # Reduced further to accommodate larger text
+        max_chars_per_line = 35
         question_lines = []
         words = question_text.split()
         current_line = ""
@@ -739,27 +828,24 @@ class BasicQuiz:
         if current_line:
             question_lines.append(current_line)
         
-        # Draw centered question - moved down for better centering with larger text
-        question_start_y = 180  # Moved down from 130
+        question_start_y = 180
         for i, line in enumerate(question_lines):
-            # Increased font size from 1.5 to 1.8 and thickness from 4 to 5
             text_size = cv2.getTextSize(line, cv2.FONT_HERSHEY_SIMPLEX, 1.8, 5)[0]
             text_x = (w - text_size[0]) // 2
-            text_y = question_start_y + (i * 60)  # Increased spacing from 50 to 60
+            text_y = question_start_y + (i * 60)
             
-            # Dark blue background for question text - larger background
             cv2.rectangle(frame, (text_x - 20, text_y - 40), (text_x + text_size[0] + 20, text_y + 20), (139, 69, 19), -1)
             cv2.putText(frame, line, (text_x, text_y), 
-                       cv2.FONT_HERSHEY_SIMPLEX, 1.8, (255, 255, 255), 5)  # Even larger font size and thickness
+                       cv2.FONT_HERSHEY_SIMPLEX, 1.8, (255, 255, 255), 5)
         
-        # Calculate answer area start position with adjusted spacing
-        answer_start_y = question_start_y + (len(question_lines) * 60) + 70  # Increased spacing
+        answer_start_y = question_start_y + (len(question_lines) * 60) + 70
         
-        # Draw answer options
-        self.selection_boxes = []
-        
-        if self.selected_qtype == "multiple_choice":
+        # Draw interface based on question type
+        if self.selected_qtype == "drag_drop":
+            self.draw_drag_drop_interface(frame, question, w, h, answer_start_y)
+        elif self.selected_qtype == "multiple_choice":
             # Center multiple choice options - made bigger
+            self.selection_boxes = []
             for i, (key, value) in enumerate(question.get("options", {}).items()):
                 y = answer_start_y + (i * 110)  # Increased spacing
                 
@@ -972,44 +1058,77 @@ class BasicQuiz:
             self.selected_qtype = selection
             self.current_questions = self.questions.get(selection, [])
             if not self.current_questions:
-                # No questions available, go back to step 2
                 return
             self.current_question_idx = 0
             self.student_score = 0
-            self.question_answered = False  # Reset for first question
+            self.question_answered = False
+            
+            # Reset drag and drop variables
+            self.dd_selected_items = []
+            self.dd_selection_mode = True
+            
             self.student_step = 3
             
         elif self.student_step == 3:  # Quiz answers
-            # Only process if question hasn't been answered yet
             if not self.question_answered and self.current_question_idx < len(self.current_questions):
                 question = self.current_questions[self.current_question_idx]
-                is_correct = False
                 
-                if self.selected_qtype == "multiple_choice":
-                    correct_answers = question.get("correct", question.get("answer", []))
-                    if isinstance(correct_answers, str):
-                        correct_answers = [correct_answers]
-                    is_correct = selection in correct_answers
-                else:  # true_false
-                    is_correct = selection == question.get("answer", "")
-                
-                if is_correct:
-                    self.student_score += 1
-                
-                # Mark question as answered
-                self.question_answered = True
-                
-                # Wait 2 seconds before moving to next question
-                def move_to_next():
-                    self.current_question_idx += 1
-                    self.question_answered = False  # Reset for next question
-                    if self.current_question_idx >= len(self.current_questions):
-                        # Save score and go to results
-                        self.save_score(self.selected_name, self.student_score)
-                        self.student_step = 4
-                
-                # Use threading to add delay
-                threading.Timer(2.0, move_to_next).start()
+                if self.selected_qtype == "drag_drop":
+                    if selection == "confirm":
+                        # Check if order is correct
+                        correct_order = question.get("correct_order", {})
+                        is_correct = True
+                        
+                        for i, item_key in enumerate(self.dd_selected_items):
+                            expected_position = correct_order.get(item_key, -1)
+                            if expected_position != i + 1:
+                                is_correct = False
+                                break
+                        
+                        if is_correct:
+                            self.student_score += 1
+                        
+                        self.question_answered = True
+                        self.dd_selected_items = []
+                        self.dd_selection_mode = True
+                        
+                        def move_to_next():
+                            self.current_question_idx += 1
+                            self.question_answered = False
+                            if self.current_question_idx >= len(self.current_questions):
+                                self.save_score(self.selected_name, self.student_score)
+                                self.student_step = 4
+                        
+                        threading.Timer(2.0, move_to_next).start()
+                        
+                    elif selection not in self.dd_selected_items:
+                        # Add item to selection
+                        self.dd_selected_items.append(selection)
+                        
+                else:  # Multiple choice or True/False
+                    is_correct = False
+                    
+                    if self.selected_qtype == "multiple_choice":
+                        correct_answers = question.get("correct", question.get("answer", []))
+                        if isinstance(correct_answers, str):
+                            correct_answers = [correct_answers]
+                        is_correct = selection in correct_answers
+                    else:  # true_false
+                        is_correct = selection == question.get("answer", "")
+                    
+                    if is_correct:
+                        self.student_score += 1
+                    
+                    self.question_answered = True
+                    
+                    def move_to_next():
+                        self.current_question_idx += 1
+                        self.question_answered = False
+                        if self.current_question_idx >= len(self.current_questions):
+                            self.save_score(self.selected_name, self.student_score)
+                            self.student_step = 4
+                    
+                    threading.Timer(2.0, move_to_next).start()
                 
         elif self.student_step == 4:  # Results actions
             if selection == "restart":
@@ -1020,6 +1139,8 @@ class BasicQuiz:
                 self.current_question_idx = 0
                 self.student_score = 0
                 self.question_answered = False
+                self.dd_selected_items = []
+                self.dd_selection_mode = True
             elif selection == "home":
                 cv2.destroyAllWindows()
                 self.create_main_menu()
@@ -1065,6 +1186,55 @@ class BasicQuiz:
         self.tf_var.set("True")
         messagebox.showinfo("Saved", "True/False question added successfully!")
 
+    def add_dd(self):
+        q = self.dd_q.get().strip()
+        if not q:
+            messagebox.showerror("Error", "Enter question")
+            return
+            
+        items = {}
+        correct_order = {}
+        
+        for i, (entry, pos_var) in self.dd_items.items():
+            item_text = entry.get().strip()
+            if item_text:
+                try:
+                    position = int(pos_var.get())
+                    if 1 <= position <= 4:
+                        items[f"item_{i}"] = item_text
+                        correct_order[f"item_{i}"] = position
+                    else:
+                        messagebox.showerror("Error", f"Position for item {i+1} must be between 1-4!")
+                        return
+                except ValueError:
+                    messagebox.showerror("Error", f"Position for item {i+1} must be a number!")
+                    return
+        
+        if len(items) < 2:
+            messagebox.showerror("Error", "Enter at least 2 items!")
+            return
+            
+        # Check for duplicate positions
+        positions = list(correct_order.values())
+        if len(positions) != len(set(positions)):
+            messagebox.showerror("Error", "Each item must have a unique position!")
+            return
+        
+        self.questions["drag_drop"].append({
+            "question": q,
+            "items": items,
+            "correct_order": correct_order
+        })
+        self.save_questions()
+        
+        # Clear form
+        self.dd_q.delete(0, tk.END)
+        for i, (entry, pos_var) in self.dd_items.items():
+            entry.delete(0, tk.END)
+            pos_var.set(str(i+1))
+        
+        messagebox.showinfo("Saved", "Drag & Drop question added successfully!")
+
     def add_student(self):
         name = self.student_entry.get().strip()
         if not name:
@@ -1106,6 +1276,107 @@ class BasicQuiz:
                 
         except Exception as e:
             messagebox.showerror("Error", f"Could not load scores: {str(e)}")
+
+    def draw_drag_drop_interface(self, frame, question, w, h, start_y):
+        items = question.get("items", {})
+        self.selection_boxes = []
+        
+        if self.dd_selection_mode:
+            # Show available items to select
+            cv2.putText(frame, "Available Items:", (50, start_y - 30), 
+                       cv2.FONT_HERSHEY_SIMPLEX, 1.2, (255, 255, 255), 3)
+            
+            # Show selected order on the right
+            if self.dd_selected_items:
+                cv2.putText(frame, "Your Order:", (w - 300, start_y - 30), 
+                           cv2.FONT_HERSHEY_SIMPLEX, 1.2, (255, 255, 255), 3)
+                
+                for i, item_key in enumerate(self.dd_selected_items):
+                    item_text = items.get(item_key, "")
+                    y_pos = start_y + (i * 50)
+                    cv2.putText(frame, f"{i+1}. {item_text}", (w - 300, y_pos), 
+                               cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
+            
+            # Draw available items
+            box_height = 80
+            box_spacing = 20
+            available_items = [(k, v) for k, v in items.items() if k not in self.dd_selected_items]
+            
+            for i, (item_key, item_text) in enumerate(available_items):
+                y = start_y + (i * (box_height + box_spacing))
+                text_size = cv2.getTextSize(item_text, cv2.FONT_HERSHEY_SIMPLEX, 1.0, 2)[0]
+                box_width = max(400, text_size[0] + 40)
+                x = 50
+                box = [x, y, x + box_width, y + box_height]
+                
+                color = (137, 180, 250) if self.hover_option == item_key else (139, 69, 19)
+                thickness = 6 if self.hover_option == item_key else 3
+                
+                cv2.rectangle(frame, (box[0], box[1]), (box[2], box[3]), color, thickness)
+                cv2.rectangle(frame, (box[0]+3, box[1]+3), (box[2]-3, box[3]-3), (139, 69, 19), -1)
+                
+                text_x = box[0] + 20
+                text_y = box[1] + 50
+                cv2.putText(frame, item_text, (text_x, text_y), 
+                           cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 2)
+                
+                if self.hover_option == item_key and self.selection_timer > 0:
+                    progress_width = int((self.selection_timer / self.selection_threshold) * (box[2] - box[0] - 10))
+                    cv2.rectangle(frame, (box[0] + 5, box[3] - 15), 
+                                 (box[0] + 5 + progress_width, box[3] - 5), (0, 255, 0), -1)
+                
+                self.selection_boxes.append((item_key, box))
+            
+            # Add confirm button if all items selected
+            if len(self.dd_selected_items) == len(items):
+                confirm_y = start_y + len(available_items) * (box_height + box_spacing) + 40
+                confirm_box = [w//2 - 150, confirm_y, w//2 + 150, confirm_y + 60]
+                
+                color = (137, 180, 250) if self.hover_option == "confirm" else (0, 255, 0)
+                thickness = 6 if self.hover_option == "confirm" else 3
+                
+                cv2.rectangle(frame, (confirm_box[0], confirm_box[1]), (confirm_box[2], confirm_box[3]), color, thickness)
+                cv2.rectangle(frame, (confirm_box[0]+3, confirm_box[1]+3), (confirm_box[2]-3, confirm_box[3]-3), (0, 255, 0), -1)
+                
+                cv2.putText(frame, "CONFIRM", (confirm_box[0] + 60, confirm_box[1] + 40), 
+                           cv2.FONT_HERSHEY_SIMPLEX, 1.2, (255, 255, 255), 3)
+                
+                if self.hover_option == "confirm" and self.selection_timer > 0:
+                    progress_width = int((self.selection_timer / self.selection_threshold) * (confirm_box[2] - confirm_box[0] - 10))
+                    cv2.rectangle(frame, (confirm_box[0] + 5, confirm_box[3] - 15), 
+                                 (confirm_box[0] + 5 + progress_width, confirm_box[3] - 5), (255, 255, 0), -1)
+                
+                self.selection_boxes.append(("confirm", confirm_box))
+        else:
+            # Show selected order
+            cv2.putText(frame, "Your Order:", (50, start_y - 30), 
+                       cv2.FONT_HERSHEY_SIMPLEX, 1.2, (255, 255, 255), 3)
+            
+            for i, item_key in enumerate(self.dd_selected_items):
+                item_text = items.get(item_key, "")
+                y_pos = start_y + (i * 50)
+                cv2.putText(frame, f"{i+1}. {item_text}", (50, y_pos), 
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
+            
+            # Draw confirm button
+            confirm_y = start_y + len(self.dd_selected_items) * 50 + 40
+            confirm_box = [w//2 - 150, confirm_y, w//2 + 150, confirm_y + 60]
+            
+            color = (137, 180, 250) if self.hover_option == "confirm" else (0, 255, 0)
+            thickness = 6 if self.hover_option == "confirm" else 3
+            
+            cv2.rectangle(frame, (confirm_box[0], confirm_box[1]), (confirm_box[2], confirm_box[3]), color, thickness)
+            cv2.rectangle(frame, (confirm_box[0]+3, confirm_box[1]+3), (confirm_box[2]-3, confirm_box[3]-3), (0, 255, 0), -1)
+            
+            cv2.putText(frame, "CONFIRM", (confirm_box[0] + 60, confirm_box[1] + 40), 
+                       cv2.FONT_HERSHEY_SIMPLEX, 1.2, (255, 255, 255), 3)
+            
+            if self.hover_option == "confirm" and self.selection_timer > 0:
+                progress_width = int((self.selection_timer / self.selection_threshold) * (confirm_box[2] - confirm_box[0] - 10))
+                cv2.rectangle(frame, (confirm_box[0] + 5, confirm_box[3] - 15), 
+                             (confirm_box[0] + 5 + progress_width, confirm_box[3] - 5), (255, 255, 0), -1)
+            
+            self.selection_boxes.append(("confirm", confirm_box))
 
 # Move this outside the class - at module level (no indentation)
 if __name__ == "__main__":
