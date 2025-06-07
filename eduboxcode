@@ -57,7 +57,7 @@ class BasicQuiz:
         self.student_score = 0
         self.selection_boxes = []
         self.selection_timer = 0
-        self.selection_threshold = 60  # Increased threshold for more control
+        self.selection_threshold = 30  # REDUCED from 60 to 30 for faster selection
         self.hover_option = None
         self.question_answered = False  # Track if current question was answered
         
@@ -1025,18 +1025,18 @@ class BasicQuiz:
             if (box[0] + 10) <= px <= (box[2] - 10) and (box[1] + 10) <= py <= (box[3] - 10):
                 current_hover = option
                 break
-        
+    
         # Handle selection timing - more strict for quiz questions
         if self.student_step == 3 and self.question_answered:
             # If question is already answered, don't process more selections
             self.selection_timer = 0
             self.hover_option = None
             return
-        
+    
         # Only process selection if hovering over a valid button area
         if current_hover is not None:
             if current_hover == self.hover_option:
-                self.selection_timer += 1
+                self.selection_timer += 2  # INCREASED from 1 to 2 for faster progress
                 if self.selection_timer >= self.selection_threshold:
                     self.handle_selection(current_hover)
                     self.selection_timer = 0
